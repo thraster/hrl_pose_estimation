@@ -345,13 +345,16 @@ class KinematicsLib():
         return targets
 
 
-
+    # kinematics model——推测7个关节点
     def forward_kinematics_pytorch(self, images_v, torso_lengths_angles_v, loss_vector_type, targets_v=None,  kincons_v = None, forward_only = False, subject = None, count = 500):
 
         test_ground_truth = False
         pseudotargets = None
 
+        # 0. 判断损失函数的类型是否正确
         if loss_vector_type == 'anglesCL' or loss_vector_type == 'anglesVL':
+            # 数据预处理
+            # 调整张量形状，并添加维度以及 padding
             torso_lengths_angles_v = torso_lengths_angles_v.unsqueeze(0)
             torso_lengths_angles_v = torso_lengths_angles_v.unsqueeze(0)
             torso_lengths_angles_v = F.pad(torso_lengths_angles_v, (0, 27, 0, 0)) #make more room for head, arms, and legs x, y, z coords.  torso already is in the network.
@@ -361,6 +364,7 @@ class KinematicsLib():
             torso_lengths_angles_v = torso_lengths_angles_v.squeeze(0)
 
             if test_ground_truth == True:
+                # 如果是测试模式，使用 ground truth 数据替换部分数据
                 # print kincons_v.size()
                 torso_lengths_angles_v[:, 0:18] = kincons_v[:, 0:18] #this is the upper angles, lower angles, upper lengths, lower lengths in that order
                 torso_lengths_angles_v[:, 20:37] = kincons_v[:, 18:35]
@@ -369,12 +373,16 @@ class KinematicsLib():
                 # print torso_lengths_angles_v[0, :]
 
             # images = images_v.data.numpy() * np.pi / 180
+
+            # 将图像数据转换为弧度表示
             images = images_v.data * np.pi / 180
-            bedangle = images[:, -1, 10, 10] * 0.75
+            bedangle = images[:, -1, 10, 10] * 0.75 # 提取床角信息
 
             bedangle = Variable(bedangle)
 
 
+            # 对各列的角度和长度进行限制
+            # 请注意，不同列的索引代表不同的角度和长度信息
             #print torso_lengths_angles_v[0, 17], torso_lengths_angles_v[0, 18], torso_lengths_angles_v.size()
 
             torso_lengths_angles_v[:, 0] = torch.clamp(torso_lengths_angles_v[:, 0], -1.8, 1.8)
@@ -399,8 +407,7 @@ class KinematicsLib():
             torso_lengths_angles_v[:, 19] = torch.clamp(torch.add(torso_lengths_angles_v[:, 19], 0.), -1.3, 0.5) #torso angle for lower
 
 
-
-
+            # 录入预先测量好的每一个subject关节点之间骨骼长度
             if True:#scount > 300 and loss_vector_type == 'anglesCL':  # add this bit for constant bone lengths
                 # if subject is not None:
                 torso_lengths_angles = Variable(torso_lengths_angles_v.data.clone())
@@ -461,6 +468,7 @@ class KinematicsLib():
 
 
             else:
+                # 可变关节长度
                 print( 'VARIABLE BONE LENGTHS, PULL OUT, SUBJECT ', str(subject))
                 torso_lengths_angles = Variable(torso_lengths_angles_v.data)
                 torso_lengths_angles_v[:, 20] = torch.add(torso_lengths_angles_v[:, 20], 0.1)
@@ -495,6 +503,7 @@ class KinematicsLib():
             torso_lengths_angles_v[:, 42] = torso_lengths_angles_v[:, 39] - torso_lengths_angles[:, 20] + torso_lengths_angles[:, 28] * ((np.pi / 2. - torso_lengths_angles_v[:, 8] * 100 * np.pi / 180).sin()) * ((-np.pi / 2. + torso_lengths_angles_v[:, 9] * 100 * np.pi / 180).cos()) * (0. + torso_lengths_angles_v[:, 18]).sin() - torso_lengths_angles[:, 28] * ((-np.pi / 2. + torso_lengths_angles_v[:, 9] * 100 * np.pi / 180).sin()) * (0. + torso_lengths_angles_v[:, 18]).cos() \
                                             + torso_lengths_angles[:, 21] * (0. + torso_lengths_angles_v[:, 18]).sin()
 
+
             # right elbow in vectorized form
             torso_lengths_angles_v[:, 43] = torso_lengths_angles_v[:, 37] - torso_lengths_angles[:, 22] \
                                             + (-(np.pi + torso_lengths_angles_v[:, 4] * 100 * np.pi / 180).cos() * torso_lengths_angles[:, 24] * (np.pi + torso_lengths_angles_v[:, 2] * 100 * np.pi / 180).cos())
@@ -506,6 +515,7 @@ class KinematicsLib():
                                             + (-torso_lengths_angles[:, 24] * (np.pi + torso_lengths_angles_v[:, 2] * 100 * np.pi / 180).sin()) * (0. + torso_lengths_angles_v[:, 18]).sin() \
                                             + ((np.pi + torso_lengths_angles_v[:, 4] * 100 * np.pi / 180).sin() * torso_lengths_angles[:, 24] * (np.pi + torso_lengths_angles_v[:, 2] * 100 * np.pi / 180).cos()) * (0. + torso_lengths_angles_v[:, 18]).cos() \
                                             + torso_lengths_angles[:, 21] * (0. + torso_lengths_angles_v[:, 18]).sin()
+
 
             # left elbow in vectorized form
             torso_lengths_angles_v[:, 46] = torso_lengths_angles_v[:, 37] + torso_lengths_angles[:, 23] \
@@ -641,7 +651,7 @@ class KinematicsLib():
         return torso_lengths_angles_v, angles, pseudotargets
 
 
-
+    # kinematics model——推测关节点的长度
     def forward_kinematics_lengthsv_pytorch(self, images_v, torso_lengths_angles_v, loss_vector_type, kincons_v = None, forward_only = False, subject = None):
 
         test_ground_truth = False

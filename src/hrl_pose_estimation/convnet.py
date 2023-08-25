@@ -313,17 +313,21 @@ class CNN(nn.Module):
         lengths_est = None
 
 
-
+        # 1. img通过ConvNet的backbone, 得到特征图scores_cnn
         scores_cnn = self.CNN_pack1(images)
         scores_size = scores_cnn.size()
         # print scores_size, 'scores conv1'
 
         # ''' # NOTE: Uncomment
         # This combines the height, width, and filters into a single dimension
+
+        # 计算输出的特征图的长、宽、通道数，合并为一个一维向量
+        # images.size(0)- batchsize
+        # scores_size[1] *scores_size[2]*scores_size[3] = height*width*channel
         scores_cnn = scores_cnn.view(images.size(0),scores_size[1] *scores_size[2]*scores_size[3] )
         #print 'size for fc layer:', scores_cnn.size()
 
-
+        # 2. 把特征图展开为一维向量后通过全连接层fc1, 得到scores
         scores = self.CNN_fc1(scores_cnn)
         # ''' # NOTE: Uncomment
 
@@ -340,8 +344,9 @@ class CNN(nn.Module):
         if kincons is not None:
             kincons = kincons / 100
 
-        print loss_vector_type, 'LOSS VECT'
+        print(loss_vector_type, 'LOSS VECT')
 
+        # 3. 根据损失函数的类型来输入kinematics model, 返回结果
         if loss_vector_type == 'anglesCL' or loss_vector_type == 'anglesVL':
             scores, angles_est, pseudotargets_est = KinematicsLib().forward_kinematics_pytorch(images, scores, loss_vector_type, kincons, forward_only = forward_only, subject = subject, count = self.count)
         elif loss_vector_type == 'anglesSTVL':

@@ -506,7 +506,7 @@ class PhysicalTrainer():
         print targets.shape
 
 
-    # 初始化ConvNet的训练
+    # 初始化ConvNet的训练, 加载模型
     def init_convnet_train(self):
         #indices = torch.LongTensor([0])
         #self.train_y_tensor = torch.index_select(self.train_y_tensor, 1, indices)
@@ -536,8 +536,9 @@ class PhysicalTrainer():
 
         output_size = self.output_size[0]*self.output_size[1]
 
+        # 判断使用何种损失函数
         if self.loss_vector_type == 'anglesCL' or self.loss_vector_type == 'anglesVL' or self.loss_vector_type == 'anglesSTVL':
-            fc_output_size = 40#38 #18 angles for body, 17 lengths for body, 3 torso coordinates
+            fc_output_size = 40  #38 #18 angles for body, 17 lengths for body, 3 torso coordinates
             self.model = convnet.CNN(self.mat_size, fc_output_size, hidden_dim, kernel_size, self.loss_vector_type)
             #self.model = torch.load('/home/ubuntu/Autobed_OFFICIAL_Trials' + '/subject_' + str(self.opt.leave_out) + '/convnets/convnet_9to18_'+str(self.loss_vector_type)+'_sTrue_128b_200e_' + str(self.opt.leave_out) + '.pt', map_location=lambda storage, loc: storage)
             print 'LOADED!!!!!!!!!!!!!!!!!1'
@@ -553,9 +554,8 @@ class PhysicalTrainer():
             self.model = convnet.CNN(self.mat_size, fc_output_size, hidden_dim, kernel_size, self.loss_vector_type)
 
         # Run model on GPU if available
-        if False:#torch.cuda.is_available():
+        if torch.cuda.is_available():
             self.model = self.model.cuda()
-
 
         self.criterion = F.cross_entropy
 
@@ -610,6 +610,7 @@ class PhysicalTrainer():
             pkl.dump(self.train_val_losses,open('/home/henry/IROS_Data/subject_'+str(self.opt.leave_out)+'/losses'+self.save_name+'.p', 'wb'))
 
 
+    # 训练ConvNet
     def train_convnet(self, epoch):
         '''
         Train the model for one epoch.
@@ -619,7 +620,6 @@ class PhysicalTrainer():
         # (as opposed to eval mode) so it knows which one to use.
         self.model.train()
         scores = 0
-
 
         #This will loop a total = training_images/batch_size times
         for batch_idx, batch in enumerate(self.train_loader):
